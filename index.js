@@ -19,6 +19,56 @@ app.get('/', (req, res) => {
   res.sendFile(process.cwd() + '/views/index.html');
 });
 
+app.post("/api/shorturl", async (req, res) => {
+  const original_url = req.body.url;
+
+  // Validate the URL
+  try {
+    const urlObj = new URL(original_url); // Will throw if invalid
+    if (!["http:", "https:"].includes(urlObj.protocol)) {
+      return res.json({ error: "invalid url" });
+    }
+  } catch (err) {
+    return res.json({ error: "invalid url" });
+  }
+
+  try {
+    // Check if URL already exists
+    let existingUrl = await Url.findOne({ original_url });
+    if (existingUrl) {
+      return res.json({
+        original_url: existingUrl.original_url,
+        short_url: existingUrl.short_url
+      });
+    }
+
+    // Find the highest short_url number
+    const lastUrl = await Url.findOne().sort({ short_url: -1 });
+    const nextShortUrl = lastUrl ? lastUrl.short_url + 1 : 1;
+
+    // Create and save new short URL
+    const newUrl = new Url({
+      original_url,
+      short_url: nextShortUrl
+    });
+
+    await newUrl.save();
+
+    res.json({
+      original_url: newUrl.original_url,
+      short_url: newUrl.short_url
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+
+
+
+/*
 //API endpoint to handle URL shortening
 app.post('/api/shorturl', async (req, res) => {
   const url = req.body.url;
@@ -44,6 +94,7 @@ app.get('/api/shorturl/:short_url', async (req, res) => {
   if (urlData) return res.redirect(urlData.original_url);
   res.json({ error: 'No short URL found for the given input' });
 });
+*/
 
 const port = process.env.PORT || 3000;
 // Start the server
@@ -53,7 +104,6 @@ mongoose.connection.once('open', () => {
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
-
 
 /*
 //API endpoint to handle URL deletion
