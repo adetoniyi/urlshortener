@@ -60,7 +60,11 @@ app.post("/api/shorturl", async (req, res) => {
         return res.json({ error: "Server error" });
       }
     });
-  
+  } catch (err) {
+    return res.json({ error: "invalid url" });
+  }
+});
+
 //GET - Redirect to original URL
 app.get('/api/shorturl/:short_url', async (req, res) => {
   const short_url = parseInt(req.params.short_url);
@@ -74,6 +78,14 @@ app.get('/api/shorturl/:short_url', async (req, res) => {
   }
 });
 
+const port = process.env.PORT || 3000;
+// Start the server
+mongoose.connection.once('open', () => {
+  console.log('Connected to MongoDB');
+});
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});
 
 
 
@@ -146,15 +158,6 @@ app.get('/api/shorturl/:short_url', async (req, res) => {
   res.json({ error: 'No short URL found for the given input' });
 });
 */
-
-const port = process.env.PORT || 3000;
-// Start the server
-mongoose.connection.once('open', () => {
-  console.log('Connected to MongoDB');
-});
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
 
 /*
 //API endpoint to handle URL deletion
@@ -257,5 +260,4 @@ app.get('/', function(req, res) {
 app.get('/api/hello', function(req, res) {
   res.json({ greeting: 'hello API' });
 });
-
 */
