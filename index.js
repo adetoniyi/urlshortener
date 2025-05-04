@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const app = express();
 const dns = require('dns');
+const cors = require('cors');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const Url = require('./models/url'); // Assuming you have a Url model defined in models/url.js
@@ -25,6 +26,58 @@ app.post("/api/shorturl", async (req, res) => {
   // Validate the URL
   try {
     const urlObj = new URL(original_url); // Will throw if invalid
+
+    //dns lookup to validate host 
+    dns.lookup(urlObj.hostname, async (err) => {
+      if (err) return res.json({ error: "invalid url" });
+
+      try {
+        // Check if already exists
+        let found = await Url.findOne({ original_url });
+        if (found) {
+          return res.json({
+            original_url: found.original_url,
+            short_url: found.short_url
+          });
+        }
+
+        // Get next short_url number
+        const last = await Url.findOne().sort({ short_url: -1 });
+        const nextShortUrl = last ? last.short_url + 1 : 1;
+
+        // Create new
+        const newUrl = new Url({
+          original_url,
+          short_url: nextShortUrl
+        });
+
+        await newUrl.save();
+        res.json({
+          original_url: newUrl.original_url,
+          short_url: newUrl.short_url
+        });
+      } catch (err) {
+        return res.json({ error: "Server error" });
+      }
+    });
+  
+//GET - Redirect to original URL
+app.get('/api/shorturl/:short_url', async (req, res) => {
+  const short_url = parseInt(req.params.short_url);
+
+  try {
+    const found = await Url.findOne({ short_url });
+    if (found) return res.redirect(found.original_url);
+    else return res.status(404).json({ error: 'No short URL found' });
+  } catch (err) {
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
+
+
+/*
     if (!["http:", "https:"].includes(urlObj.protocol)) {
       return res.json({ error: "invalid url" });
     }
@@ -64,9 +117,7 @@ app.post("/api/shorturl", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
-
-
-
+*/
 
 /*
 //API endpoint to handle URL shortening
